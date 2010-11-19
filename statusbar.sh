@@ -122,7 +122,8 @@ do
 
   if [ -n "$WLAN_FOUND" ]
   then
-    if   [ $WLAN_PCT -le 20 ]; then COLON="$COL_CRIT"; COLOFF="$COL_NORM"
+    if   [ $WLAN_PCT -eq 0 ];  then COLON=""; COLOFF=""
+    elif [ $WLAN_PCT -le 20 ]; then COLON="$COL_CRIT"; COLOFF="$COL_NORM"
     elif [ $WLAN_PCT -le 50 ]; then COLON="$COL_WARN"; COLOFF="$COL_NORM"
     else COLON=""; COLOFF=""; fi
     WLAN=${COLON}$(( $WLAN_PCT / 10 ))"w$COLOFF "
