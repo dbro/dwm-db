@@ -1,0 +1,4 @@
+#!/bin/sh
+[ `pgrep -c -f /usr/local/bin/statusbar.sh` -eq 0 ] && statusbar.sh &
+syndaemon -i 0.5 -t -d
+dwm
