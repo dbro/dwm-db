@@ -1,7 +1,7 @@
 dwm-db
 ======
 
-Starting from (dwm)[http://dwm.suckless.org/] version 5.8.2, this fork has
+Starting from [dwm](http://dwm.suckless.org/) version 5.8.2, this fork has
 the following changes:
 
 * movestack patch allows shuffling windows around, similar to xmonad
@@ -13,7 +13,9 @@ the following changes:
 statusbar.sh
 ------------
 
-A shell script which provides information to the dwm status bar.
+A shell script which provides information to the dwm status bar. Simple, but
+not very flexible. In spite of my poor shell code, it seems to use less cpu
+than a comparable xmobar script.
 
 * CPU, Memory, Swap usage
 * Network throughput and wireless signal strength (if detected)

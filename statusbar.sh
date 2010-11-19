@@ -8,8 +8,8 @@
 # depends on mpc, xsetroot
 # and dwm's statuscolors patch. we use these codes:
 COL_NORM=`echo "\001"`
-COL_WARN=`echo "\005"`
-COL_CRIT=`echo "\006"`
+COL_WARN=`echo "\002"`
+COL_CRIT=`echo "\003"`
 
 # TODO: a few things should be made into variables
 # eg. eth0 wlan0 battery0
