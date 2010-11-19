@@ -8,6 +8,7 @@ static const char colors[NUMCOLORS][ColLast][8] = {
    { "#cccccc", "#888888", "#000000" }, // 0 = normal
    { "#cc0000", "#ffff00", "#000000" }, // 1 = selected
    { "#ff6600", "#000000", "#ff6600" }, // 2 = urgent/warning
+   { "#000000", "#ffffff", "#000000" }, // 3 = window title text
 };
 static const unsigned int borderpx  = 1;        /* border pixel of windows */
 static const unsigned int snap      = 32;       /* snap pixel */

@@ -710,16 +710,16 @@ drawbar(Monitor *m) {
 	}
 	dc.x = 0;
 	for(i = 0; i < LENGTH(tags); i++) {
-		dc.w = TEXTW(tags[i]);
-		col = dc.colors[ (m->tagset[m->seltags] & 1 << i) ? 
-                   1 : (urg & 1 << i ? 2:0) ];
-		drawtext(tags[i], col, True);
-		drawsquare(m == selmon && selmon->sel && selmon->sel->tags & 1 << i,
-		           occ & 1 << i, col);
-		dc.x += dc.w;
+        if((occ & 1 << i ) || (m->tagset[m->seltags] & 1 << i)) {
+            dc.w = textnw(tags[i], strlen(tags[i]));
+            col = dc.colors[ (m->tagset[m->seltags] & 1 << i) ? 
+                1 : (urg & 1 << i ? 2:0) ];
+            drawtext(tags[i], col, False);
+		    dc.x += dc.w;
+        }
 	}
 	dc.w = blw = TEXTW(m->ltsymbol);
-	drawtext(m->ltsymbol, dc.colors[0], False);
+	drawtext(m->ltsymbol, dc.colors[0], True);
 	dc.x += dc.w;
 	x = dc.x;
 	if(m == selmon) { /* status is only drawn on selected monitor */
@@ -736,7 +736,7 @@ drawbar(Monitor *m) {
 	if((dc.w = dc.x - x) > bh) {
 		dc.x = x;
 		if(m->sel) {
-			col = dc.colors[ m == selmon ? 1 : 0 ];
+			col = dc.colors[ m == selmon ? 3 : 0 ]; // color 3 is title text
 			drawtext(m->sel->name, col, True);
 			drawsquare(m->sel->isfixed, m->sel->isfloating, col);
 		}

@@ -7,8 +7,8 @@ the following changes:
 * movestack patch allows shuffling windows around, similar to xmonad
 * xft patch supports nicer fonts
 * statuscolors patch enables colors in status bar text
-* TODO: only show tag names (1,2,...9) when they have windows in them, or are visible
-* TODO: use a different color for the active window title
+* only show tag names (1,2,...9) when they have windows in them, or are visible
+* use a different color for the active window title
 
 statusbar.sh
 ------------
@@ -35,9 +35,8 @@ Follow the instructions for installing dwm. Note the colors are specified
 differently in config.h, and are off-by-one when referring to them in
 statusbar.sh.
 
-copy statusbar.sh into the default path, eg /usr/local/bin
-
-make; sudo make install
-
+after running "make" and "make install", copy statusbar.sh and dwm-start
+into the default path, eg /usr/local/bin . then create an entry in your 
+login manager, eg /usr/share/xsessions/dwm.desktop
 
 Dan Brown, 2010
