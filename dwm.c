@@ -39,6 +39,9 @@
 #ifdef XINERAMA
 #include <X11/extensions/Xinerama.h>
 #endif /* XINERAMA */
+#ifdef XFT
+#include <X11/Xft/Xft.h>
+#endif
 
 /* macros */
 #define BUTTONMASK              (ButtonPressMask|ButtonReleaseMask)
@@ -105,8 +108,12 @@ typedef struct {
 		int ascent;
 		int descent;
 		int height;
+#ifdef XFT
+		XftFont *xft;
+#else
 		XFontSet set;
 		XFontStruct *xfont;
+#endif
 	} font;
 } DC; /* draw context */
 
@@ -274,6 +281,9 @@ static Display *dpy;
 static DC dc;
 static Monitor *mons = NULL, *selmon = NULL;
 static Window root;
+#ifdef XFT
+static XftDraw *xftdraw;
+#endif
 
 /* configuration, allows nested code to access above variables */
 #include "config.h"
@@ -482,10 +492,14 @@ cleanup(void) {
 	for(m = mons; m; m = m->next)
 		while(m->stack)
 			unmanage(m->stack, False);
+#ifdef XFT
+	XftFontClose(dpy, dc.font.xft);
+#else
 	if(dc.font.set)
 		XFreeFontSet(dpy, dc.font.set);
 	else
 		XFreeFont(dpy, dc.font.xfont);
+#endif
 	XUngrabKey(dpy, AnyKey, AnyModifier, root);
 	XFreePixmap(dpy, dc.drawable);
 	XFreeGC(dpy, dc.gc);
@@ -765,6 +779,18 @@ drawtext(const char *text, unsigned long col[ColLast], Bool invert) {
 	char buf[256];
 	int i, x, y, h, len, olen;
 	XRectangle r = { dc.x, dc.y, dc.w, dc.h };
+#ifdef XFT
+	int p;
+	XColor color;
+	XftColor xftcolor;
+
+	color.pixel = col[invert ? ColBG : ColFG];
+	XQueryColor(dpy, DefaultColormap(dpy, screen), &color);
+	xftcolor.color.red = color.red;
+	xftcolor.color.green = color.green;
+	xftcolor.color.blue = color.blue;
+	xftcolor.color.alpha = 0xffff;
+#endif
 
 	XSetForeground(dpy, dc.gc, col[invert ? ColFG : ColBG]);
 	XFillRectangles(dpy, dc.drawable, dc.gc, &r, 1);
@@ -779,6 +805,34 @@ drawtext(const char *text, unsigned long col[ColLast], Bool invert) {
 	if(!len)
 		return;
 	memcpy(buf, text, len);
+#ifdef XFT
+	if(len < olen) {
+		for(i = len - 1, p = 0; i; --i, ++p) {
+			if(buf[i] & 0x80) { /* 10xxxxxx */
+				if((buf[i] & 0x40) && (p >= 2)) { /* 11xxxxxx */
+					buf[i] = '.';
+					break;
+				}
+				buf[i] = '.';
+			}
+			else {
+				buf[i] = '.';
+				if(p == 2) break;
+			}
+		}
+		++p;
+		if (p > 3)
+			len -= p - 3;
+	}
+
+	XftColorAllocValue(dpy, XDefaultVisual(dpy, screen),
+			   DefaultColormap(dpy, screen),
+			   &xftcolor.color, &xftcolor);
+ 	XftDrawStringUtf8(xftdraw, &xftcolor, dc.font.xft, x, y,
+			  (XftChar8*)buf, len);
+	XftColorFree(dpy, XDefaultVisual(dpy, screen),
+		     DefaultColormap(dpy, screen), &xftcolor);
+#else
 	if(len < olen)
 		for(i = len; i && i > len - 3; buf[--i] = '.');
 	XSetForeground(dpy, dc.gc, col[invert ? ColBG : ColFG]);
@@ -786,6 +840,7 @@ drawtext(const char *text, unsigned long col[ColLast], Bool invert) {
 		XmbDrawString(dpy, dc.drawable, dc.font.set, dc.gc, x, y, buf, len);
 	else
 		XDrawString(dpy, dc.drawable, dc.gc, x, y, buf, len);
+#endif
 }
 
 void
@@ -989,6 +1044,19 @@ grabkeys(void) {
 
 void
 initfont(const char *fontstr) {
+#ifdef XFT
+	XftResult result;
+	XftPattern *p;
+	XftPattern *m;
+
+	p = XftNameParse(fontstr);
+	m = XftFontMatch(dpy, screen, p, &result);
+	dc.font.xft = XftFontOpenPattern(dpy, m);
+	dc.font.ascent = dc.font.xft->ascent;
+	dc.font.descent = dc.font.xft->descent;
+
+	dc.font.height = dc.font.ascent + dc.font.descent;
+#else
 	char *def, **missing;
 	int i, n;
 
@@ -1021,6 +1089,7 @@ initfont(const char *fontstr) {
 		dc.font.descent = dc.font.xfont->descent;
 	}
 	dc.font.height = dc.font.ascent + dc.font.descent;
+#endif
 }
 
 Bool
@@ -1553,8 +1622,12 @@ setup(void) {
 	dc.drawable = XCreatePixmap(dpy, root, DisplayWidth(dpy, screen), bh, DefaultDepth(dpy, screen));
 	dc.gc = XCreateGC(dpy, root, 0, NULL);
 	XSetLineAttributes(dpy, dc.gc, 1, LineSolid, CapButt, JoinMiter);
+#ifndef XFT
 	if(!dc.font.set)
 		XSetFont(dpy, dc.gc, dc.font.xfont->fid);
+#else
+	xftdraw = XftDrawCreate(dpy, dc.drawable, XDefaultVisual(dpy, screen), DefaultColormap(dpy, screen));
+#endif
 	/* init bars */
 	updatebars();
 	updatestatus();
@@ -1625,6 +1698,12 @@ tagmon(const Arg *arg) {
 
 int
 textnw(const char *text, unsigned int len) {
+#ifdef XFT
+	XGlyphInfo g;
+
+	XftTextExtentsUtf8(dpy, dc.font.xft, (XftChar8*)text, len, &g);
+	return g.xOff;
+#else
 	XRectangle r;
 
 	if(dc.font.set) {
@@ -1632,6 +1711,7 @@ textnw(const char *text, unsigned int len) {
 		return r.width;
 	}
 	return XTextWidth(dc.font.xfont, text, len);
+#endif
 }
 
 void
