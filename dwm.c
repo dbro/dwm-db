@@ -48,6 +48,7 @@
 #define LENGTH(X)               (sizeof X / sizeof X[0])
 #define MAX(A, B)               ((A) > (B) ? (A) : (B))
 #define MIN(A, B)               ((A) < (B) ? (A) : (B))
+#define MAXCOLORS               8 // avoid circular reference to NUMCOLORS
 #define MOUSEMASK               (BUTTONMASK|PointerMotionMask)
 #define WIDTH(X)                ((X)->w + 2 * (X)->bw)
 #define HEIGHT(X)               ((X)->h + 2 * (X)->bw)
@@ -97,8 +98,7 @@ struct Client {
 
 typedef struct {
 	int x, y, w, h;
-	unsigned long norm[ColLast];
-	unsigned long sel[ColLast];
+    unsigned long colors[MAXCOLORS][ColLast];
 	Drawable drawable;
 	GC gc;
 	struct {
@@ -175,8 +175,9 @@ static void die(const char *errstr, ...);
 static Monitor *dirtomon(int dir);
 static void drawbar(Monitor *m);
 static void drawbars(void);
-static void drawsquare(Bool filled, Bool empty, Bool invert, unsigned long col[ColLast]);
-static void drawtext(const char *text, unsigned long col[ColLast], Bool invert);
+static void drawcoloredtext(char *text);
+static void drawsquare(Bool filled, Bool empty, unsigned long col[ColLast]);
+static void drawtext(const char *text, unsigned long col[ColLast], Bool pad);
 static void enternotify(XEvent *e);
 static void expose(XEvent *e);
 static void focus(Client *c);
@@ -696,14 +697,15 @@ drawbar(Monitor *m) {
 	dc.x = 0;
 	for(i = 0; i < LENGTH(tags); i++) {
 		dc.w = TEXTW(tags[i]);
-		col = m->tagset[m->seltags] & 1 << i ? dc.sel : dc.norm;
-		drawtext(tags[i], col, urg & 1 << i);
+		col = dc.colors[ (m->tagset[m->seltags] & 1 << i) ? 
+                   1 : (urg & 1 << i ? 2:0) ];
+		drawtext(tags[i], col, True);
 		drawsquare(m == selmon && selmon->sel && selmon->sel->tags & 1 << i,
-		           occ & 1 << i, urg & 1 << i, col);
+		           occ & 1 << i, col);
 		dc.x += dc.w;
 	}
 	dc.w = blw = TEXTW(m->ltsymbol);
-	drawtext(m->ltsymbol, dc.norm, False);
+	drawtext(m->ltsymbol, dc.colors[0], False);
 	dc.x += dc.w;
 	x = dc.x;
 	if(m == selmon) { /* status is only drawn on selected monitor */
@@ -713,19 +715,19 @@ drawbar(Monitor *m) {
 			dc.x = x;
 			dc.w = m->ww - x;
 		}
-		drawtext(stext, dc.norm, False);
+		drawcoloredtext(stext);
 	}
 	else
 		dc.x = m->ww;
 	if((dc.w = dc.x - x) > bh) {
 		dc.x = x;
 		if(m->sel) {
-			col = m == selmon ? dc.sel : dc.norm;
-			drawtext(m->sel->name, col, False);
-			drawsquare(m->sel->isfixed, m->sel->isfloating, False, col);
+			col = dc.colors[ m == selmon ? 1 : 0 ];
+			drawtext(m->sel->name, col, True);
+			drawsquare(m->sel->isfixed, m->sel->isfloating, col);
 		}
 		else
-			drawtext(NULL, dc.norm, False);
+			drawtext(NULL, dc.colors[0], False);
 	}
 	XCopyArea(dpy, dc.drawable, m->barwin, dc.gc, 0, 0, m->ww, bh, 0, 0);
 	XSync(dpy, False);
@@ -740,12 +742,36 @@ drawbars(void) {
 }
 
 void
-drawsquare(Bool filled, Bool empty, Bool invert, unsigned long col[ColLast]) {
+drawcoloredtext(char *text) {
+    char *buf = text, *ptr = buf, c = 1;
+    unsigned long *col = dc.colors[0];
+    int i, ox = dc.x;
+
+    while( *ptr ) {
+        for( i = 0; *ptr < 0 || *ptr > NUMCOLORS; i++, ptr++);
+        if( !*ptr ) break;
+        c=*ptr;
+        *ptr=0;
+        if( i ) {
+            dc.w = selmon->ww - dc.x;
+            drawtext(buf, col, False);
+            dc.x += textnw(buf, i);
+        }
+        *ptr = c;
+        col = dc.colors[ c-1 ];
+        buf = ++ptr;
+    }
+    drawtext(buf, col, False);
+    dc.x = ox;
+}
+
+void
+drawsquare(Bool filled, Bool empty, unsigned long col[ColLast]) {
 	int x;
 	XGCValues gcv;
 	XRectangle r = { dc.x, dc.y, dc.w, dc.h };
 
-	gcv.foreground = col[invert ? ColBG : ColFG];
+	gcv.foreground = col[ColFG];
 	XChangeGC(dpy, dc.gc, GCForeground, &gcv);
 	x = (dc.font.ascent + dc.font.descent + 2) / 4;
 	r.x = dc.x + 1;
@@ -761,18 +787,18 @@ drawsquare(Bool filled, Bool empty, Bool invert, unsigned long col[ColLast]) {
 }
 
 void
-drawtext(const char *text, unsigned long col[ColLast], Bool invert) {
+drawtext(const char *text, unsigned long col[ColLast], Bool pad) {
 	char buf[256];
 	int i, x, y, h, len, olen;
 	XRectangle r = { dc.x, dc.y, dc.w, dc.h };
 
-	XSetForeground(dpy, dc.gc, col[invert ? ColFG : ColBG]);
+	XSetForeground(dpy, dc.gc, col[ColBG]);
 	XFillRectangles(dpy, dc.drawable, dc.gc, &r, 1);
 	if(!text)
 		return;
 	olen = strlen(text);
-	h = dc.font.ascent + dc.font.descent;
-	y = dc.y + (dc.h / 2) - (h / 2) + dc.font.ascent;
+	h = pad ? (dc.font.ascent + dc.font.descent) : 0;
+	y = dc.y + ((dc.h + dc.font.ascent - dc.font.descent) / 2);
 	x = dc.x + (h / 2);
 	/* shorten text if necessary */
 	for(len = MIN(olen, sizeof buf); len && textnw(text, len) > dc.w - h; len--);
@@ -781,7 +807,7 @@ drawtext(const char *text, unsigned long col[ColLast], Bool invert) {
 	memcpy(buf, text, len);
 	if(len < olen)
 		for(i = len; i && i > len - 3; buf[--i] = '.');
-	XSetForeground(dpy, dc.gc, col[invert ? ColBG : ColFG]);
+	XSetForeground(dpy, dc.gc, col[ColFG]);
 	if(dc.font.set)
 		XmbDrawString(dpy, dc.drawable, dc.font.set, dc.gc, x, y, buf, len);
 	else
@@ -830,7 +856,7 @@ focus(Client *c) {
 		detachstack(c);
 		attachstack(c);
 		grabbuttons(c, True);
-		XSetWindowBorder(dpy, c->win, dc.sel[ColBorder]);
+		XSetWindowBorder(dpy, c->win, dc.colors[1][ColBorder]);
 		XSetInputFocus(dpy, c->win, RevertToPointerRoot, CurrentTime);
 	}
 	else
@@ -1139,7 +1165,7 @@ manage(Window w, XWindowAttributes *wa) {
 	}
 	wc.border_width = c->bw;
 	XConfigureWindow(dpy, w, CWBorderWidth, &wc);
-	XSetWindowBorder(dpy, w, dc.norm[ColBorder]);
+	XSetWindowBorder(dpy, w, dc.colors[0][ColBorder]);
 	configure(c); /* propagates border_width, if size doesn't change */
 	updatesizehints(c);
 	XSelectInput(dpy, w, EnterWindowMask|FocusChangeMask|PropertyChangeMask|StructureNotifyMask);
@@ -1544,12 +1570,11 @@ setup(void) {
 	cursor[CurResize] = XCreateFontCursor(dpy, XC_sizing);
 	cursor[CurMove] = XCreateFontCursor(dpy, XC_fleur);
 	/* init appearance */
-	dc.norm[ColBorder] = getcolor(normbordercolor);
-	dc.norm[ColBG] = getcolor(normbgcolor);
-	dc.norm[ColFG] = getcolor(normfgcolor);
-	dc.sel[ColBorder] = getcolor(selbordercolor);
-	dc.sel[ColBG] = getcolor(selbgcolor);
-	dc.sel[ColFG] = getcolor(selfgcolor);
+    for(int i=0; i<NUMCOLORS; i++) {
+        dc.colors[i][ColBorder] = getcolor( colors[i][ColBorder] );
+        dc.colors[i][ColFG] = getcolor( colors[i][ColFG] );
+        dc.colors[i][ColBG] = getcolor( colors[i][ColBG] );
+    }
 	dc.drawable = XCreatePixmap(dpy, root, DisplayWidth(dpy, screen), bh, DefaultDepth(dpy, screen));
 	dc.gc = XCreateGC(dpy, root, 0, NULL);
 	XSetLineAttributes(dpy, dc.gc, 1, LineSolid, CapButt, JoinMiter);
@@ -1625,13 +1650,31 @@ tagmon(const Arg *arg) {
 
 int
 textnw(const char *text, unsigned int len) {
+    // remove non-printing color codes before calculating width
+    char *ptr = (char *) text, *buf, *ptrbuf;
+    unsigned int i, lenbuf=len;
+    int answer;
 	XRectangle r;
 
+    buf = (char *)malloc(len + 1); // filtered text
+    for(i=0, ptrbuf=buf; *ptr; i++, ptr++) {
+        if(*ptr <= NUMCOLORS && *ptr > 0) {
+            if (i < len) { lenbuf--; }
+        } else {
+            *ptrbuf=*ptr;
+            ptrbuf++;
+        }
+    }
+    *ptrbuf=0;
+
 	if(dc.font.set) {
-		XmbTextExtents(dc.font.set, text, len, NULL, &r);
-		return r.width;
-	}
-	return XTextWidth(dc.font.xfont, text, len);
+		XmbTextExtents(dc.font.set, buf, lenbuf, NULL, &r);
+		answer = r.width;
+	} else {
+	    answer = XTextWidth(dc.font.xfont, buf, lenbuf);
+    }
+    free(buf);
+    return answer;
 }
 
 void
@@ -1711,7 +1754,7 @@ unfocus(Client *c, Bool setfocus) {
 	if(!c)
 		return;
 	grabbuttons(c, False);
-	XSetWindowBorder(dpy, c->win, dc.norm[ColBorder]);
+	XSetWindowBorder(dpy, c->win, dc.colors[0][ColBorder]);
 	if(setfocus)
 		XSetInputFocus(dpy, root, RevertToPointerRoot, CurrentTime);
 }
