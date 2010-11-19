@@ -709,7 +709,7 @@ drawbar(Monitor *m) {
 	dc.x += dc.w;
 	x = dc.x;
 	if(m == selmon) { /* status is only drawn on selected monitor */
-		dc.w = TEXTW(stext);
+		dc.w = textnw(stext, strlen(stext)); // no padding
 		dc.x = m->ww - dc.w;
 		if(dc.x < x) {
 			dc.x = x;
