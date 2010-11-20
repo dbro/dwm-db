@@ -1724,20 +1724,21 @@ tagmon(const Arg *arg) {
 int
 textnw(const char *text, unsigned int len) {
     // remove non-printing color codes before calculating width
-    char *ptr = (char *) text, *buf, *ptrbuf;
-    unsigned int i, lenbuf=len;
+    char *ptr = (char *) text;
+    unsigned int i, ibuf, lenbuf=len;
     int answer;
+    char buf[256];
 
-    buf = (char *)malloc(len + 1); // filtered text
-    for(i=0, ptrbuf=buf; *ptr; i++, ptr++) {
+//    buf = (char *)malloc(len + 1); // filtered text
+    for(i=0, ibuf=0; *ptr; i++, ptr++) {
         if(*ptr <= NUMCOLORS && *ptr > 0) {
             if (i < len) { lenbuf--; }
         } else {
-            *ptrbuf=*ptr;
-            ptrbuf++;
+            buf[ibuf]=*ptr;
+            ibuf++;
         }
     }
-    *ptrbuf=0;
+    buf[ibuf]=0;
 
 #ifdef XFT
 	XGlyphInfo g;
@@ -1752,7 +1753,7 @@ textnw(const char *text, unsigned int len) {
 	    answer = XTextWidth(dc.font.xfont, buf, lenbuf);
     }
 #endif
-    free(buf);
+//    if(buf!=NULL) { free(buf); }
     return answer;
 }
 
