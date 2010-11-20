@@ -1728,7 +1728,7 @@ textnw(const char *text, unsigned int len) {
     unsigned int i, ibuf, lenbuf=len;
     char buf[len + 1];
 
-    for(i=0, ibuf=0; *ptr; i++, ptr++) {
+    for(i=0, ibuf=0; *ptr && i<len; i++, ptr++) {
         if(*ptr <= NUMCOLORS && *ptr > 0) {
             if (i < len) { lenbuf--; }
         } else {
