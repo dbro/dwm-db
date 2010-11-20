@@ -1726,10 +1726,8 @@ textnw(const char *text, unsigned int len) {
     // remove non-printing color codes before calculating width
     char *ptr = (char *) text;
     unsigned int i, ibuf, lenbuf=len;
-    int answer;
-    char buf[256];
+    char buf[len + 1];
 
-//    buf = (char *)malloc(len + 1); // filtered text
     for(i=0, ibuf=0; *ptr; i++, ptr++) {
         if(*ptr <= NUMCOLORS && *ptr > 0) {
             if (i < len) { lenbuf--; }
@@ -1743,18 +1741,16 @@ textnw(const char *text, unsigned int len) {
 #ifdef XFT
 	XGlyphInfo g;
 	XftTextExtentsUtf8(dpy, dc.font.xft, (XftChar8*)buf, lenbuf, &g);
-    answer = g.xOff;
+    return g.xOff;
 #else
 	if(dc.font.set) {
 	    XRectangle r;
 		XmbTextExtents(dc.font.set, buf, lenbuf, NULL, &r);
-		answer = r.width;
+		return r.width;
 	} else {
-	    answer = XTextWidth(dc.font.xfont, buf, lenbuf);
+	    return XTextWidth(dc.font.xfont, buf, lenbuf);
     }
 #endif
-//    if(buf!=NULL) { free(buf); }
-    return answer;
 }
 
 void
