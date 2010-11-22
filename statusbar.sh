@@ -120,15 +120,14 @@ do
   else COLON=""; COLOFF=""; fi
   SWAP="${COLON}${SWAPDIGIT}s${COLOFF}"
 
-  if [ -n "$WLAN_FOUND" ]
+  if [ -z "$WLAN_FOUND" ] || [ $WLAN_PCT -eq 0 ]
   then
-    if   [ $WLAN_PCT -eq 0 ];  then COLON=""; COLOFF=""
-    elif [ $WLAN_PCT -le 20 ]; then COLON="$COL_CRIT"; COLOFF="$COL_NORM"
+    WLAN=""
+  else
+    if [ $WLAN_PCT -le 20 ]; then COLON="$COL_CRIT"; COLOFF="$COL_NORM"
     elif [ $WLAN_PCT -le 50 ]; then COLON="$COL_WARN"; COLOFF="$COL_NORM"
     else COLON=""; COLOFF=""; fi
     WLAN=${COLON}$(( $WLAN_PCT / 10 ))"w$COLOFF "
-  else
-    WLAN=""
   fi
 
   NET=`printf '%3dn%-3d' \
