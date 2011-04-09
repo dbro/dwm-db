@@ -68,12 +68,21 @@ do
 
   if which acpi > /dev/null
   then
-    ACPI=`acpi -b`
-    BATT_PCT=`echo "$ACPI" | head -n 1 | awk -F"[ ,%]*" \
-      '/att/ { print prefix $4 }'`
-    BATT_CHARGING=`echo "$ACPI" | head -n 1 | awk -F"[ ,%]*" \
-      '/att/ {
-        if (tolower($0) ~ / charging/) print "+"; else print " " }'`
+    ACPI=`acpi -b 2>&1 | head -n 1`
+#    if [ `echo "$ACPI" | cut -d' ' -f1,2` != "No support" ]
+    ACPI2=`echo "$ACPI" | cut -d' ' -f1,2`
+    if [ "$ACPI2" != "No support" ]
+    then
+      BATT_PCT=`echo "$ACPI" | awk -F"[ ,%]*" \
+        '/att/ { print prefix $4 }'`
+      BATT_CHARGING=`echo "$ACPI" | awk -F"[ ,%]*" \
+        '/att/ {
+          if (tolower($0) ~ / charging/) print "+"; else print " " }'`
+    else
+      BATT_PCT=""
+    fi
+  else
+    BATT_PCT=""
   fi
 
   MUSIC=`mpc --format "[[%artist% - ]%title%]|[%name%]|[%file%]"`
