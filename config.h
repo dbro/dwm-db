@@ -3,7 +3,7 @@
 
 /* appearance */
 static const char font[]            = "inconsolata:size=15";
-#define NUMCOLORS 6                     // need at least 3
+#define NUMCOLORS 7                     // need at least 3
 static const char colors[NUMCOLORS][ColLast][8] = {
    // border   foreground  background
    { "#cccccc", "#888888", "#000000" }, // 0 = normal
@@ -12,6 +12,7 @@ static const char colors[NUMCOLORS][ColLast][8] = {
    { "#000000", "#ffffff", "#000000" }, // 3 = window title text
    { "#000000", "#ffffff", "#000000" }, // 4 = statusbar elevated level
    { "#000000", "#ff0000", "#000000" }, // 5 = statusbar critical level
+   { "#ff6600", "#000000", "#ff0000" }, // 6 = statusbar critical level flashing
 };
 static const unsigned int borderpx  = 1;        /* border pixel of windows */
 static const unsigned int snap      = 32;       /* snap pixel */

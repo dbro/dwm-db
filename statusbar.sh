@@ -10,11 +10,15 @@
 COL_NORM=`echo "\001"`
 COL_WARN=`echo "\005"`
 COL_CRIT=`echo "\006"`
+COL_CRIT_ALT=`echo "\007"`
 
 # TODO: a few things should be made into variables
 # eg. eth0 wlan0 battery0
 
 SEP=" | "
+
+# a simple flag to enable flashing effects
+FLIPFLOP=0
 
 # gather initial set of information for rate calculations
 VMSTAT=`vmstat -s`
@@ -144,7 +148,12 @@ do
       # the charging variable holds the visual representation
       BATTDIGIT=${BATT_CHARGING}$(( $BATT_PCT / 10 ))
     fi
-    if   [ $BATT_PCT -le 20 ]; then COLON="$COL_CRIT"; COLOFF="$COL_NORM"
+    if [ $BATT_PCT -le 20 ]; then
+        if [ "$BATT_CHARGING" = " " -a $FLIPFLOP -eq 0 ]; then
+            COLON="$COL_CRIT_ALT"
+            FLIPFLOP=1
+        else COLON="$COL_CRIT"; FLIPFLOP=0; fi
+        COLOFF="$COL_NORM"
     elif [ $BATT_PCT -le 50 ]; then COLON="$COL_WARN"; COLOFF="$COL_NORM"
     else COLON=""; COLOFF=""; fi
     BATT=${SEP}${COLON}${BATTDIGIT}"b"${COLOFF}
