@@ -20,6 +20,9 @@ SEP=" | "
 # a simple flag to enable flashing effects
 FLIPFLOP=0
 
+# count the number of CPU cores
+CPU_COUNT=`grep processor /proc/cpuinfo | wc -l`
+
 # gather initial set of information for rate calculations
 VMSTAT=`vmstat -s`
 NETDEV=`cat /proc/net/dev`
@@ -45,13 +48,17 @@ do
 
   SWAP_USED=`echo "$VMSTAT" | sed -n -e 's/^ *\([0-9]*\).*used swap.*$/\1/p'`
   SWAP_TOTAL=`echo "$VMSTAT" | sed -n -e 's/^ *\([0-9]*\).*total swap.*$/\1/p'`
-  SWAP_PCT=$(( 100 * $SWAP_USED / $SWAP_TOTAL ))
+  SWAP_PCT=-1
+  if [ $SWAP_TOTAL != "0" ]
+  then
+    SWAP_PCT=$(( 100 * $SWAP_USED / $SWAP_TOTAL ))
+  fi
   MEM_USED=`echo "$VMSTAT" | sed -n -e 's/^ *\([0-9]*\).*used memory.*$/\1/p'`
   MEM_TOTAL=`echo "$VMSTAT" | sed -n -e 's/^ *\([0-9]*\).*total memory.*$/\1/p'`
   MEM_PCT=$(( 100 * $MEM_USED / $MEM_TOTAL ))
 
   CPUIDLETICKS=`echo "$VMSTAT" | sed -n -e 's/^ *\([0-9]*\).*idle cpu.*$/\1/p'`
-  CPU_IDLE_PCT=$(( 100 * ($CPUIDLETICKS - $CPUIDLETICKS_PREV) / ($TICKS_NOW - $TICKS_PREV) ))
+  CPU_IDLE_PCT=$(( (100 / $CPU_COUNT) * ($CPUIDLETICKS - $CPUIDLETICKS_PREV) / ($TICKS_NOW - $TICKS_PREV) ))
   CPU_PCT=$(( 100 - $CPU_IDLE_PCT ))
 
   NETUP=`echo "$NETDEV" | awk -F"[ :]*" '/eth0/ {print $11}'`
@@ -122,17 +129,28 @@ do
   else COLON=""; COLOFF=""; fi
   MEM="${COLON}${MEMDIGIT}m${COLOFF}"
 
-  if [ $SWAP_PCT -ge 99 ] 
+  if [ $SWAP_PCT -eq -1 ]
   then
-    SWAPDIGIT="X"
+    SWAP=""
   else
-    SWAPDIGIT=$(( $SWAP_PCT / 10 ))
+    if [ $SWAP_PCT -ge 99 ] 
+    then
+      SWAPDIGIT="X"
+    else
+      SWAPDIGIT=$(( $SWAP_PCT / 10 ))
+    fi
+    if   [ $SWAP_PCT -ge 80 ]; then COLON="$COL_CRIT"; COLOFF="$COL_NORM"
+    elif [ $SWAP_PCT -ge 10 ]; then COLON="$COL_WARN"; COLOFF="$COL_NORM"
+    else COLON=""; COLOFF=""; fi
+    SWAP="${COLON}${SWAPDIGIT}s${COLOFF}"
   fi
-  if   [ $SWAP_PCT -ge 80 ]; then COLON="$COL_CRIT"; COLOFF="$COL_NORM"
-  elif [ $SWAP_PCT -ge 10 ]; then COLON="$COL_WARN"; COLOFF="$COL_NORM"
-  else COLON=""; COLOFF=""; fi
-  SWAP="${COLON}${SWAPDIGIT}s${COLOFF}"
-
+  if [ -z $SWAP ]
+  then
+    SYS="$CPU $MEM"
+  else
+    SYS="$CPU $MEM $SWAP"
+  fi
+ 
   if [ -z "$WLAN_FOUND" ] || [ $WLAN_PCT -eq 0 ]
   then
     WLAN=""
@@ -170,7 +188,7 @@ do
     BATT=""
   fi
  
-  xsetroot -name "$MUSIC$SEP$CPU $MEM $SWAP $SEP$WLAN$NET$BATT$SEP$DATE"
+  xsetroot -name "$MUSIC$SEP$SYS$SEP$WLAN$NET$BATT$SEP$DATE"
 
   # Store the current values to prepare for next loop's rate calculations
   TICKS_PREV=$TICKS_NOW
