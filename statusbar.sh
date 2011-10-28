@@ -64,7 +64,8 @@ do
   NETUP=`echo "$NETDEV" | awk -F"[ :]*" '/eth0/ {print $11}'`
   NETDN=`echo "$NETDEV" | awk -F"[ :]*" '/eth0/ {print $3}'`
 #  echo "1 NETUP = $NETUP \t\tNETDN = $NETDN"
-  if [ -n "$WLAN_FOUND" ]
+  if [ `cat /proc/net/wireless | grep wlan0 | wc -l` -gt 0 ]
+  #if [ -n "$WLAN_FOUND" ]
   then
     WLANUP=`echo "$NETDEV" | awk -F"[ :]*" '/wlan0/ {print $11}'`
     WLANDN=`echo "$NETDEV" | awk -F"[ :]*" '/wlan0/ {print $3}'`
@@ -73,6 +74,8 @@ do
     NETDN=$(( $NETDN + $WLANDN ))
 #    echo "2 NETUP = $NETUP \t\tNETDN = $NETDN"
     WLAN_PCT=`cat /proc/net/wireless | sed -n -e 's/.*wlan0[^0-9]*[0-9]* *\([0-9]*\).*/\1/p'`
+  else
+    WLAN_PCT=0
   fi
   NETUP_RATE=$(( ($NETUP - $NETUP_PREV) * 100 / ($TICKS_NOW - $TICKS_PREV)  ))
   NETDN_RATE=$(( ($NETDN - $NETDN_PREV) * 100 / ($TICKS_NOW - $TICKS_PREV)  ))
