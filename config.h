@@ -55,12 +55,12 @@ static const Layout layouts[] = {
 
 /* commands */
 static const char *dmenucmd[] = { "dmenu_run", "-fn", font, "-nb", colors[0][ColBG], "-nf", colors[0][ColFG], "-sb", colors[1][ColBG], "-sf", colors[1][ColFG], NULL };
-static const char *termcmd[]  = { "urxvt", NULL };
+static const char *termcmd[]  = { "st", NULL };
 static const char *lockscreencmd[]  = { "slock", NULL };
 static const char *browsercmd[]     = { "google-chrome", NULL };
 static const char *browseraltcmd[]  = { "firefox", NULL };
 static const char *filemgrcmd[]     = { "thunar", NULL };
-static const char *netmgrcmd[]      = { "urxvt", "-e", "wicd-curses", NULL };
+static const char *netmgrcmd[]      = { "st", "-e", "wicd-curses", NULL };
 static const char *screenshotcmd[]  = { "scrot", NULL };
 /* static const char *editorcmd[]      = { "vim", NULL }; */
 static const char *musicplay[]      = { "muss", "-p", NULL };
